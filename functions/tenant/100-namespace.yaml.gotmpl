@@ -1,0 +1,35 @@
+# code: language=yaml
+#
+# Per-Tenant Namespace — created via provider-kubernetes Object on the
+# target cluster (state.providerConfigRefs.kubernetes).
+#
+# The namespace is where the Tenant's downstream primitives (HumanUser,
+# MachineUser, Grant, IDP XRs; raw Zitadel Project / Role MRs for
+# additional projects; OpenPanel MRs; etc.) live.
+#
+
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-namespace
+  annotations:
+    {{ setResourceNameAnnotation "namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: {{ $state.perTenantNamespace }}
+        labels:
+          hops.ops.com.ai/managed: "true"
+          hops.ops.com.ai/tenant: {{ $state.name | quote }}
+          {{- if $state.capsule.enabled }}
+          capsule.clastix.io/tenant: {{ $state.name | quote }}
+          {{- end }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.kubernetes.name | quote }}
+    kind: {{ $state.providerConfigRefs.kubernetes.kind | quote }}

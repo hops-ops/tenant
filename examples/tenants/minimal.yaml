@@ -1,0 +1,21 @@
+# Minimal Tenant — create mode, no Capsule, no Foundation. Useful for
+# multi-domain personal-brand Tenants like pat-brand that don't need
+# K8s workload isolation.
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: Tenant
+metadata:
+  name: pat-brand
+  namespace: tenants
+spec:
+  clusterName: pat-local
+  type: individual
+  display:
+    name: "Pat Scott"
+    primaryDomain: patscott.io
+    aliasDomains:
+      - patrickleescott.com
+  identity:
+    zitadel:
+      mode: create
+  capsule:
+    enabled: false

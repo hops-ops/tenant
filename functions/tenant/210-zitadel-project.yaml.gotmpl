@@ -1,0 +1,33 @@
+# code: language=yaml
+#
+# Default Zitadel Project (project.zitadel.m.crossplane.io/Project).
+#
+# Composition gating per [[feedback_crossplane_composition_gates]]: defer
+# emission until the Org is observed (orgId populated). This avoids the
+# chicken-and-egg where Project's forProvider.orgId would be empty on first
+# iteration. Subsequent reconciliations emit the Project once Org observes
+# atProvider.id.
+#
+
+{{- $zitadel := $state.zitadel }}
+{{- if and (not $zitadel.defaultProjectSkip) (ne $state.observed.orgId "") }}
+---
+apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: {{ $state.name }}-default-project
+  annotations:
+    {{ setResourceNameAnnotation "zitadel-default-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  forProvider:
+    name: {{ $zitadel.defaultProjectName | quote }}
+    orgId: {{ $state.observed.orgId | quote }}
+    projectRoleAssertion: true
+    projectRoleCheck: false
+    hasProjectCheck: false
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.zitadel.name | quote }}
+    kind: {{ $state.providerConfigRefs.zitadel.kind | quote }}
+{{- end }}

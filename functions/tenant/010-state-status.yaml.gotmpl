@@ -1,0 +1,78 @@
+# code: language=yaml
+#
+# Extract observed state from composed MRs to feed downstream dependencies
+# and final status emission.
+#
+
+{{- $observed := $.observed.resources | default dict }}
+
+# Zitadel Org observed state
+{{- $orgEntry := get $observed "zitadel-org" | default dict }}
+{{- $orgResource := $orgEntry.resource | default dict }}
+{{- $orgAtProvider := (($orgResource.status | default dict).atProvider | default dict) }}
+{{- $orgId := $orgAtProvider.id | default "" }}
+
+# If adopt mode and no observed id yet, fall back to spec.adoptOrgId
+{{- if and (eq $state.zitadel.mode "adopt") (eq $orgId "") }}
+  {{- $orgId = $state.zitadel.adoptOrgId }}
+{{- end }}
+
+# Zitadel Project observed state
+{{- $projectEntry := get $observed "zitadel-default-project" | default dict }}
+{{- $projectResource := $projectEntry.resource | default dict }}
+{{- $projectAtProvider := (($projectResource.status | default dict).atProvider | default dict) }}
+{{- $projectId := $projectAtProvider.id | default "" }}
+
+# Per-role observed state
+{{- $rolesStatus := dict }}
+{{- range $i, $role := $state.zitadel.defaultRoles }}
+  {{- $roleEntry := get $observed (printf "zitadel-default-role-%s" $role.key) | default dict }}
+  {{- $roleResource := $roleEntry.resource | default dict }}
+  {{- $roleAtProvider := (($roleResource.status | default dict).atProvider | default dict) }}
+  {{- $roleId := $roleAtProvider.id | default "" }}
+  {{- $_ := set $rolesStatus $role.key (dict "roleId" $roleId) }}
+{{- end }}
+
+# Namespace observed Ready signal
+{{- $nsEntry := get $observed "namespace" | default dict }}
+{{- $nsResource := $nsEntry.resource | default dict }}
+{{- $nsConditions := (($nsResource.status | default dict).conditions | default list) }}
+{{- $namespaceReady := false }}
+{{- range $nsConditions }}
+  {{- if and (eq .type "Ready") (eq .status "True") }}
+    {{- $namespaceReady = true }}
+  {{- end }}
+{{- end }}
+
+# Capsule Tenant observed Ready signal
+{{- $capsuleReady := false }}
+{{- if $state.capsule.enabled }}
+  {{- $capsuleEntry := get $observed "capsule-tenant" | default dict }}
+  {{- $capsuleResource := $capsuleEntry.resource | default dict }}
+  {{- $capsuleConditions := (($capsuleResource.status | default dict).conditions | default list) }}
+  {{- range $capsuleConditions }}
+    {{- if and (eq .type "Ready") (eq .status "True") }}
+      {{- $capsuleReady = true }}
+    {{- end }}
+  {{- end }}
+{{- else }}
+  {{- $capsuleReady = true }}
+{{- end }}
+
+# Tenant Ready when all required slices are Ready
+{{- $tenantReady := and $namespaceReady (ne $orgId "") $capsuleReady }}
+{{- if not $state.zitadel.defaultProjectSkip }}
+  {{- $tenantReady = and $tenantReady (ne $projectId "") }}
+{{- end }}
+
+# Mutate $state
+{{- $_ := set $state.observed "orgId" $orgId }}
+{{- $_ := set $state.observed "projectId" $projectId }}
+{{- $_ := set $state.observed "rolesStatus" $rolesStatus }}
+{{- $_ := set $state.observed "namespaceReady" $namespaceReady }}
+{{- $_ := set $state.observed "capsuleReady" $capsuleReady }}
+{{- $_ := set $state.status "ready" $tenantReady }}
+{{- $_ := set $state.status "namespace" $state.perTenantNamespace }}
+{{- $_ := set $state.status "orgId" $orgId }}
+{{- $_ := set $state.status "projectId" $projectId }}
+{{- $_ := set $state.status "rolesStatus" $rolesStatus }}

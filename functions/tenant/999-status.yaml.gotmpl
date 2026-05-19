@@ -1,0 +1,32 @@
+# code: language=yaml
+#
+# Output XR status.
+#
+
+{{- $xr := getCompositeResource . }}
+
+# Compose roles map (key → { roleId })
+{{- $rolesStatusYaml := $state.observed.rolesStatus | default dict }}
+
+---
+apiVersion: {{ $xr.apiVersion }}
+kind: {{ $xr.kind }}
+status:
+  ready: {{ $state.status.ready }}
+  namespace: {{ $state.status.namespace | quote }}
+  identity:
+    zitadel:
+      mode: {{ $state.zitadel.mode | quote }}
+      orgId: {{ $state.status.orgId | default "" | quote }}
+      defaultProject:
+        name: {{ $state.zitadel.defaultProjectName | quote }}
+        projectId: {{ $state.status.projectId | default "" | quote }}
+        roles: {{ $rolesStatusYaml | toJson }}
+  capsule:
+    enabled: {{ $state.capsule.enabled }}
+    {{- if $state.capsule.enabled }}
+    tenantName: {{ $state.name | quote }}
+    {{- end }}
+  {{- if $state.accounts }}
+  accounts: {{ $state.accounts | toJson }}
+  {{- end }}

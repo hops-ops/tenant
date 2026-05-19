@@ -1,0 +1,18 @@
+# Build output
+_output/
+.up/
+
+# Virtual environments
+.venv/
+
+# Temporary files
+.tmp/
+
+# E2E test credentials + per-run env (never commit secrets)
+**/aws-creds
+tests/**/secrets/
+tests/**/env/
+apis/**/configuration.yaml
+
+# OS
+.DS_Store

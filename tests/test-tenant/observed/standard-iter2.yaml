@@ -1,0 +1,16 @@
+# Observed state for iteration 2 — Org has been created, its UUID is in
+# atProvider.id. Composition function should now emit the default Project
+# and Role MRs.
+---
+apiVersion: org.zitadel.m.crossplane.io/v1alpha1
+kind: Org
+metadata:
+  name: ops-com-ai-org
+  annotations:
+    crossplane.io/composition-resource-name: zitadel-org
+status:
+  atProvider:
+    id: "373268222482392664"
+  conditions:
+    - type: Ready
+      status: "True"

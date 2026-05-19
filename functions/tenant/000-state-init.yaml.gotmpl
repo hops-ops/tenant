@@ -1,0 +1,149 @@
+# code: language=yaml
+#
+# Initialize $state with spec defaults.
+#
+
+{{- $xr := getCompositeResource . }}
+{{- $spec := $xr.spec | default dict }}
+{{- $metadata := $xr.metadata | default dict }}
+
+# ==============================================================================
+# Core
+# ==============================================================================
+{{- $name := $metadata.name }}
+{{- $namespace := $metadata.namespace | default "tenants" }}
+{{- $clusterName := $spec.clusterName }}
+{{- $type := $spec.type | default "business" }}
+{{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
+
+# Per-Tenant namespace = metadata.name
+{{- $perTenantNamespace := $name }}
+
+# ==============================================================================
+# Display
+# ==============================================================================
+{{- $display := $spec.display | default dict }}
+{{- $displayName := $display.name }}
+{{- $primaryDomain := $display.primaryDomain | default "" }}
+{{- $aliasDomains := $display.aliasDomains | default (list) }}
+
+# ==============================================================================
+# Identity / Zitadel
+# ==============================================================================
+{{- $identity := $spec.identity | default dict }}
+{{- $zitadel := $identity.zitadel | default dict }}
+{{- $zitadelMode := $zitadel.mode | default "create" }}
+
+{{- $zitadelCreate := $zitadel.create | default dict }}
+{{- $orgName := $zitadelCreate.orgName | default "" }}
+{{- if eq $orgName "" }}
+  {{- $orgName = $name }}
+{{- end }}
+
+{{- $zitadelAdopt := $zitadel.adopt | default dict }}
+{{- $adoptOrgId := $zitadelAdopt.orgId | default "" }}
+
+{{- $defaultProjectSpec := $zitadel.defaultProject | default dict }}
+{{- $defaultProjectSkip := $defaultProjectSpec.skip | default false }}
+{{- $defaultProjectName := $defaultProjectSpec.name | default "" }}
+{{- if eq $defaultProjectName "" }}
+  {{- $defaultProjectName = printf "%s-default" $name }}
+{{- end }}
+
+# Default roles fall back to tenant-admin + tenant-member when not supplied
+{{- $defaultRoles := $defaultProjectSpec.roles | default (list) }}
+{{- if eq (len $defaultRoles) 0 }}
+  {{- $defaultRoles = list
+    (dict "key" "tenant-admin"  "displayName" "Tenant Admin"  "group" "admin")
+    (dict "key" "tenant-member" "displayName" "Tenant Member" "group" "")
+  }}
+{{- end }}
+
+# ==============================================================================
+# Capsule
+# ==============================================================================
+{{- $capsuleSpec := $spec.capsule | default dict }}
+{{- $capsuleEnabled := $capsuleSpec.enabled | default false }}
+{{- $capsuleUserGroups := $capsuleSpec.userGroups | default (list "tenant-admin") }}
+
+# ==============================================================================
+# Accounts (Foundation refs — informational only)
+# ==============================================================================
+{{- $accounts := $spec.accounts | default dict }}
+
+# ==============================================================================
+# Billing
+# ==============================================================================
+{{- $billing := $spec.billing | default dict }}
+
+# ==============================================================================
+# ProviderConfig refs (derived from clusterName when not explicit)
+# ==============================================================================
+{{- $pcRefs := $spec.providerConfigRefs | default dict }}
+
+{{- $k8sPcSpec := $pcRefs.kubernetes | default dict }}
+{{- $k8sPcName := $k8sPcSpec.name | default "" }}
+{{- if eq $k8sPcName "" }}
+  {{- $k8sPcName = $clusterName }}
+{{- end }}
+{{- $k8sPcKind := $k8sPcSpec.kind | default "ProviderConfig" }}
+
+{{- $zitadelPcSpec := $pcRefs.zitadel | default dict }}
+{{- $zitadelPcName := $zitadelPcSpec.name | default "" }}
+{{- if eq $zitadelPcName "" }}
+  {{- $zitadelPcName = printf "%s-zitadel" $clusterName }}
+{{- end }}
+{{- $zitadelPcKind := $zitadelPcSpec.kind | default "ProviderConfig" }}
+
+# ==============================================================================
+# Labels
+# ==============================================================================
+{{- $defaultLabels := dict
+  "hops.ops.com.ai/managed" "true"
+  "hops.ops.com.ai/tenant" $name
+}}
+{{- $labels := merge $defaultLabels ($spec.labels | default dict) }}
+
+# ==============================================================================
+# $state
+# ==============================================================================
+{{- $state := dict
+  "name" $name
+  "namespace" $namespace
+  "clusterName" $clusterName
+  "type" $type
+  "perTenantNamespace" $perTenantNamespace
+  "managementPolicies" $managementPolicies
+  "labels" $labels
+
+  "display" (dict
+    "name" $displayName
+    "primaryDomain" $primaryDomain
+    "aliasDomains" $aliasDomains
+  )
+
+  "zitadel" (dict
+    "mode" $zitadelMode
+    "orgName" $orgName
+    "adoptOrgId" $adoptOrgId
+    "defaultProjectSkip" $defaultProjectSkip
+    "defaultProjectName" $defaultProjectName
+    "defaultRoles" $defaultRoles
+  )
+
+  "capsule" (dict
+    "enabled" $capsuleEnabled
+    "userGroups" $capsuleUserGroups
+  )
+
+  "accounts" $accounts
+  "billing" $billing
+
+  "providerConfigRefs" (dict
+    "kubernetes" (dict "name" $k8sPcName "kind" $k8sPcKind)
+    "zitadel" (dict "name" $zitadelPcName "kind" $zitadelPcKind)
+  )
+
+  "observed" (dict)
+  "status" (dict)
+}}

@@ -1,0 +1,28 @@
+# code: language=yaml
+#
+# Zitadel Org (org.zitadel.m.crossplane.io/Org).
+#
+# create mode: fresh Org, server-assigned id.
+# adopt  mode: crossplane.io/external-name set to spec.adoptOrgId.
+#
+
+{{- $zitadel := $state.zitadel }}
+
+---
+apiVersion: org.zitadel.m.crossplane.io/v1alpha1
+kind: Org
+metadata:
+  name: {{ $state.name }}-org
+  annotations:
+    {{ setResourceNameAnnotation "zitadel-org" }}
+    {{- if eq $zitadel.mode "adopt" }}
+    crossplane.io/external-name: {{ $zitadel.adoptOrgId | quote }}
+    {{- end }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  forProvider:
+    name: {{ $zitadel.orgName | quote }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.zitadel.name | quote }}
+    kind: {{ $state.providerConfigRefs.zitadel.kind | quote }}

@@ -1,0 +1,32 @@
+# Adopt mode — takes over the existing pat-local "tenant-platform" Zitadel
+# Org (id 373268222482392664) under the ops-com-ai Tenant name. The
+# adoptOrgId propagates as the underlying Org MR's crossplane.io/external-name
+# annotation. managementPolicies excludes Create on observed resources so
+# Crossplane doesn't try to recreate.
+#
+# Default Project + Roles compose fresh in the adopted Org (defaultProject
+# is not skipped). Set spec.identity.zitadel.defaultProject.skip: true if
+# the existing Org already has Projects you want to manage separately via
+# raw Zitadel Project MRs.
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: Tenant
+metadata:
+  name: ops-com-ai
+  namespace: tenants
+spec:
+  clusterName: pat-local
+  type: business
+  display:
+    name: "ops.com.ai"
+    primaryDomain: ops.com.ai
+  identity:
+    zitadel:
+      mode: adopt
+      adopt:
+        orgId: "373268222482392664"
+      defaultProject:
+        skip: true                    # existing Org already has platform-services Project
+  capsule:
+    enabled: true
+    userGroups: [tenant-admin]
+  managementPolicies: ["Observe", "Update", "LateInitialize"]

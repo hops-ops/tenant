@@ -1,0 +1,47 @@
+# code: language=yaml
+#
+# Capsule Tenant CR (capsule.clastix.io/v1beta2/Tenant) — only when
+# capsule.enabled. The Capsule controller must be installed cluster-wide
+# (via tenant-stack's TenantStack XRD) for this to work.
+#
+# The Capsule Tenant is cluster-scoped; the per-Tenant K8s namespace is
+# claimed via the `capsule.clastix.io/tenant` label we set in 100-namespace.
+#
+# Owners use the Zitadel Project Role claim format: "<org>:<role>" — the
+# Capsule webhook checks the OIDC token's claims when a user creates
+# resources in the tenant's namespace.
+#
+
+{{- if $state.capsule.enabled }}
+{{- $firstOwnerRole := index $state.capsule.userGroups 0 }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-capsule-tenant
+  annotations:
+    {{ setResourceNameAnnotation "capsule-tenant" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: capsule.clastix.io/v1beta2
+      kind: Tenant
+      metadata:
+        name: {{ $state.name }}
+        labels:
+          hops.ops.com.ai/managed: "true"
+          hops.ops.com.ai/tenant: {{ $state.name | quote }}
+      spec:
+        owners:
+          - kind: Group
+            name: {{ printf "%s:%s" $state.zitadel.orgName $firstOwnerRole | quote }}
+        namespaceOptions:
+          additionalMetadataList:
+            - labels:
+                hops.ops.com.ai/tenant: {{ $state.name | quote }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.kubernetes.name | quote }}
+    kind: {{ $state.providerConfigRefs.kubernetes.kind | quote }}
+{{- end }}

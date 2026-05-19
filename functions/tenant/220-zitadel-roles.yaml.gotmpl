@@ -1,0 +1,44 @@
+# code: language=yaml
+#
+# Default Zitadel Roles inside the default Project
+# (project.zitadel.m.crossplane.io/Role).
+#
+# Gated on the Project being observed (projectId populated) via
+# projectIdRef cross-resource reference. Role MR's projectIdRef.name
+# resolves to the composed Project MR's atProvider.id.
+#
+
+{{- $zitadel := $state.zitadel }}
+{{- if and (not $zitadel.defaultProjectSkip) (ne $state.observed.orgId "") }}
+  {{- range $i, $role := $zitadel.defaultRoles }}
+    {{- $roleDisplayName := $role.displayName | default $role.key }}
+    {{- $roleGroup := $role.group | default "" }}
+---
+apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: {{ $state.name }}-default-role-{{ $role.key }}
+  annotations:
+    {{ setResourceNameAnnotation (printf "zitadel-default-role-%s" $role.key) }}
+  labels:
+    {{- range $k, $v := $state.labels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    hops.ops.com.ai/auth-project: {{ printf "%s-default-project" $state.name | quote }}
+    hops.ops.com.ai/role-key: {{ $role.key | quote }}
+spec:
+  forProvider:
+    orgId: {{ $state.observed.orgId | quote }}
+    projectIdRef:
+      name: {{ printf "%s-default-project" $state.name | quote }}
+    roleKey: {{ $role.key | quote }}
+    displayName: {{ $roleDisplayName | quote }}
+    {{- if ne $roleGroup "" }}
+    group: {{ $roleGroup | quote }}
+    {{- end }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.zitadel.name | quote }}
+    kind: {{ $state.providerConfigRefs.zitadel.kind | quote }}
+  {{- end }}
+{{- end }}
