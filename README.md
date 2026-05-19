@@ -89,7 +89,7 @@ Defaults derive from `spec.clusterName`:
 
 Override explicitly when the convention doesn't fit (e.g., bring-your-own Zitadel/OpenPanel pointing at a tenant-owned instance).
 
-**Namespace constraint**: per [[reference_v2_providerconfig_same_namespace_lookup]], Crossplane v2 namespaced MRs can only resolve ProviderConfigs in their own namespace. Either use `ClusterProviderConfig` variants OR ensure the PCs live in the same namespace as the per-Tenant resources.
+**Namespace constraint**: per [[reference_v2_providerconfig_same_namespace_lookup]], Crossplane v2 namespaced MRs only resolve ProviderConfigs in their own namespace. The composed MRs land in the XR's namespace, so the relevant PCs need to be there (or via a cluster-scoped variant). Resolution path is an operational choice.
 
 ## Examples
 
