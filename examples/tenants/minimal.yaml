@@ -5,7 +5,7 @@ apiVersion: hops.ops.com.ai/v1alpha1
 kind: Tenant
 metadata:
   name: pat-brand
-  namespace: tenants
+  namespace: default
 spec:
   clusterName: pat-local
   type: individual

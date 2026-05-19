@@ -11,7 +11,7 @@
 # Core
 # ==============================================================================
 {{- $name := $metadata.name }}
-{{- $namespace := $metadata.namespace | default "tenants" }}
+{{- $namespace := $metadata.namespace | default "default" }}
 {{- $clusterName := $spec.clusterName }}
 {{- $type := $spec.type | default "business" }}
 {{- $managementPolicies := $spec.managementPolicies | default (list "*") }}

@@ -25,7 +25,7 @@ _items = [
             timeoutSeconds = 60
             validate = False
             xr = hopsv1alpha1.Tenant {
-                metadata = {name = "ops-com-ai", namespace = "tenants"}
+                metadata = {name = "ops-com-ai", namespace = "default"}
                 spec = {
                     clusterName = "pat-local"
                     type = "business"
@@ -81,7 +81,7 @@ _items = [
             timeoutSeconds = 60
             validate = False
             xr = hopsv1alpha1.Tenant {
-                metadata = {name = "ops-com-ai", namespace = "tenants"}
+                metadata = {name = "ops-com-ai", namespace = "default"}
                 spec = {
                     clusterName = "pat-local"
                     display = {name = "ops.com.ai", primaryDomain = "ops.com.ai"}
@@ -123,7 +123,7 @@ _items = [
             timeoutSeconds = 60
             validate = False
             xr = hopsv1alpha1.Tenant {
-                metadata = {name = "pat-brand", namespace = "tenants"}
+                metadata = {name = "pat-brand", namespace = "default"}
                 spec = {
                     clusterName = "pat-local"
                     type = "individual"
@@ -163,7 +163,7 @@ _items = [
             timeoutSeconds = 60
             validate = False
             xr = hopsv1alpha1.Tenant {
-                metadata = {name = "ops-com-ai", namespace = "tenants"}
+                metadata = {name = "ops-com-ai", namespace = "default"}
                 spec = {
                     clusterName = "pat-local"
                     display = {name = "ops.com.ai", primaryDomain = "ops.com.ai"}
@@ -201,7 +201,7 @@ _items = [
             timeoutSeconds = 60
             validate = False
             xr = hopsv1alpha1.Tenant {
-                metadata = {name = "thrivendale", namespace = "tenants"}
+                metadata = {name = "thrivendale", namespace = "default"}
                 spec = {
                     clusterName = "pat-local"
                     display = {name = "Thrivendale", primaryDomain = "thrivendale.com"}
