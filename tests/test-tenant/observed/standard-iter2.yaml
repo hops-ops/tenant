@@ -1,6 +1,7 @@
-# Observed state for iteration 2 — Org has been created, its UUID is in
-# atProvider.id. Composition function should now emit the default Project
-# and Role MRs.
+# Observed state for iteration 2 — both Zitadel Org and OpenPanel Org
+# have been created and observed. Composition should now emit:
+#   - Zitadel default Project + 2 default Roles
+#   - OpenPanel default Project
 ---
 apiVersion: org.zitadel.m.crossplane.io/v1alpha1
 kind: Org
@@ -11,6 +12,19 @@ metadata:
 status:
   atProvider:
     id: "373268222482392664"
+  conditions:
+    - type: Ready
+      status: "True"
+---
+apiVersion: organization.openpanel.m.crossplane.io/v1alpha1
+kind: Organization
+metadata:
+  name: ops-com-ai-openpanel-org
+  annotations:
+    crossplane.io/composition-resource-name: openpanel-org
+status:
+  atProvider:
+    id: "openpanel-org-uuid-test"
   conditions:
     - type: Ready
       status: "True"

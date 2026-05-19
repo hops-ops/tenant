@@ -15,8 +15,6 @@
 {{- $clusterName := $spec.clusterName }}
 {{- $type := $spec.type | default "business" }}
 {{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
-
-# Per-Tenant namespace = metadata.name
 {{- $perTenantNamespace := $name }}
 
 # ==============================================================================
@@ -31,32 +29,44 @@
 # Identity / Zitadel
 # ==============================================================================
 {{- $identity := $spec.identity | default dict }}
-{{- $zitadel := $identity.zitadel | default dict }}
-{{- $zitadelMode := $zitadel.mode | default "create" }}
-
-{{- $zitadelCreate := $zitadel.create | default dict }}
-{{- $orgName := $zitadelCreate.orgName | default "" }}
-{{- if eq $orgName "" }}
-  {{- $orgName = $name }}
+{{- $zitadelSpec := $identity.zitadel | default dict }}
+{{- $zitadelOrgName := $zitadelSpec.orgName | default "" }}
+{{- if eq $zitadelOrgName "" }}
+  {{- $zitadelOrgName = $name }}
 {{- end }}
+# Adoption: spec.identity.zitadel.orgId propagates to the Org MR as external-name
+{{- $zitadelOrgId := $zitadelSpec.orgId | default "" }}
 
-{{- $zitadelAdopt := $zitadel.adopt | default dict }}
-{{- $adoptOrgId := $zitadelAdopt.orgId | default "" }}
-
-{{- $defaultProjectSpec := $zitadel.defaultProject | default dict }}
-{{- $defaultProjectSkip := $defaultProjectSpec.skip | default false }}
-{{- $defaultProjectName := $defaultProjectSpec.name | default "" }}
-{{- if eq $defaultProjectName "" }}
-  {{- $defaultProjectName = printf "%s-default" $name }}
+{{- $zitadelDefaultProjectSpec := $zitadelSpec.defaultProject | default dict }}
+{{- $zitadelDefaultProjectSkip := $zitadelDefaultProjectSpec.skip | default false }}
+{{- $zitadelDefaultProjectName := $zitadelDefaultProjectSpec.name | default "" }}
+{{- if eq $zitadelDefaultProjectName "" }}
+  {{- $zitadelDefaultProjectName = printf "%s-default" $name }}
 {{- end }}
-
-# Default roles fall back to tenant-admin + tenant-member when not supplied
-{{- $defaultRoles := $defaultProjectSpec.roles | default (list) }}
-{{- if eq (len $defaultRoles) 0 }}
-  {{- $defaultRoles = list
+{{- $zitadelDefaultRoles := $zitadelDefaultProjectSpec.roles | default (list) }}
+{{- if eq (len $zitadelDefaultRoles) 0 }}
+  {{- $zitadelDefaultRoles = list
     (dict "key" "tenant-admin"  "displayName" "Tenant Admin"  "group" "admin")
     (dict "key" "tenant-member" "displayName" "Tenant Member" "group" "")
   }}
+{{- end }}
+
+# ==============================================================================
+# Analytics / OpenPanel
+# ==============================================================================
+{{- $analytics := $spec.analytics | default dict }}
+{{- $openpanelSpec := $analytics.openpanel | default dict }}
+{{- $openpanelEnabled := $openpanelSpec.enabled | default false }}
+{{- $openpanelOrgName := $openpanelSpec.orgName | default "" }}
+{{- if eq $openpanelOrgName "" }}
+  {{- $openpanelOrgName = $displayName }}
+{{- end }}
+{{- $openpanelOrgId := $openpanelSpec.orgId | default "" }}
+{{- $openpanelDefaultProjectSpec := $openpanelSpec.defaultProject | default dict }}
+{{- $openpanelDefaultProjectSkip := $openpanelDefaultProjectSpec.skip | default false }}
+{{- $openpanelDefaultProjectName := $openpanelDefaultProjectSpec.name | default "" }}
+{{- if eq $openpanelDefaultProjectName "" }}
+  {{- $openpanelDefaultProjectName = printf "%s-default" $name }}
 {{- end }}
 
 # ==============================================================================
@@ -67,17 +77,13 @@
 {{- $capsuleUserGroups := $capsuleSpec.userGroups | default (list "tenant-admin") }}
 
 # ==============================================================================
-# Accounts (Foundation refs — informational only)
+# Accounts / Billing — pass-through
 # ==============================================================================
 {{- $accounts := $spec.accounts | default dict }}
-
-# ==============================================================================
-# Billing
-# ==============================================================================
 {{- $billing := $spec.billing | default dict }}
 
 # ==============================================================================
-# ProviderConfig refs (derived from clusterName when not explicit)
+# ProviderConfig refs
 # ==============================================================================
 {{- $pcRefs := $spec.providerConfigRefs | default dict }}
 
@@ -94,6 +100,13 @@
   {{- $zitadelPcName = printf "%s-zitadel" $clusterName }}
 {{- end }}
 {{- $zitadelPcKind := $zitadelPcSpec.kind | default "ProviderConfig" }}
+
+{{- $openpanelPcSpec := $pcRefs.openpanel | default dict }}
+{{- $openpanelPcName := $openpanelPcSpec.name | default "" }}
+{{- if eq $openpanelPcName "" }}
+  {{- $openpanelPcName = printf "%s-openpanel" $clusterName }}
+{{- end }}
+{{- $openpanelPcKind := $openpanelPcSpec.kind | default "ProviderConfig" }}
 
 # ==============================================================================
 # Labels
@@ -123,12 +136,19 @@
   )
 
   "zitadel" (dict
-    "mode" $zitadelMode
-    "orgName" $orgName
-    "adoptOrgId" $adoptOrgId
-    "defaultProjectSkip" $defaultProjectSkip
-    "defaultProjectName" $defaultProjectName
-    "defaultRoles" $defaultRoles
+    "orgName" $zitadelOrgName
+    "orgId" $zitadelOrgId
+    "defaultProjectSkip" $zitadelDefaultProjectSkip
+    "defaultProjectName" $zitadelDefaultProjectName
+    "defaultRoles" $zitadelDefaultRoles
+  )
+
+  "openpanel" (dict
+    "enabled" $openpanelEnabled
+    "orgName" $openpanelOrgName
+    "orgId" $openpanelOrgId
+    "defaultProjectSkip" $openpanelDefaultProjectSkip
+    "defaultProjectName" $openpanelDefaultProjectName
   )
 
   "capsule" (dict
@@ -142,6 +162,7 @@
   "providerConfigRefs" (dict
     "kubernetes" (dict "name" $k8sPcName "kind" $k8sPcKind)
     "zitadel" (dict "name" $zitadelPcName "kind" $zitadelPcKind)
+    "openpanel" (dict "name" $openpanelPcName "kind" $openpanelPcKind)
   )
 
   "observed" (dict)

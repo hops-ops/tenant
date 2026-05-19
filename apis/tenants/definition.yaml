@@ -17,21 +17,23 @@ spec:
         description: |
           Tenant is the platform's business-object kind. One Tenant per
           customer agreement / business relationship. Scaffolds the per-Tenant
-          identity slice (Zitadel Org + default Project + default Roles) and
-          optional K8s isolation (Capsule Tenant CR) in a per-Tenant namespace.
+          identity slice (Zitadel Org + default Project + default Roles) plus
+          (optionally) an analytics slice (OpenPanel Org + default Project)
+          and K8s isolation (Capsule Tenant CR), all in a per-Tenant namespace.
 
-          v1 scope:
-          - Composes Namespace + Zitadel Org + default Zitadel Project + default
-            Roles + (optionally) Capsule Tenant.
-          - identity.zitadel.mode supports "create" and "adopt"; "external"
-            (tenant-owned Zitadel) deferred.
-          - Analytics-side composition (OpenPanel Org/Project/Client/SsoConfig)
-            deferred — operators apply raw OpenPanel MRs separately.
-          - Foundation refs echoed in status but not composed.
+          Adoption of existing external resources follows Crossplane's
+          standard convention — set the underlying resource's id in the spec
+          (e.g., `identity.zitadel.orgId: "..."` or
+          `analytics.openpanel.orgId: "..."`) and the composition propagates
+          it as the composed MR's `crossplane.io/external-name` annotation.
+          Pair with `managementPolicies: ["Observe", "Update", "LateInitialize"]`
+          to prevent Crossplane from trying to recreate. Alternatively,
+          apply the XR fresh and `kubectl annotate` the composed MR
+          afterwards.
 
-          Additional Projects/Roles beyond the default are added by applying
-          raw Zitadel Project/Role MRs in the per-Tenant namespace. Same goes
-          for OpenPanel resources.
+          Operators add additional Zitadel Projects/Roles, OpenPanel
+          Projects/Clients, etc. by applying raw provider MRs in the
+          per-Tenant namespace — keeps this XR thin.
 
           See [[specs/tenant-xrd]] for the design.
         type: object
@@ -43,8 +45,8 @@ spec:
               clusterName:
                 description: |
                   Target cluster name. Used as default for
-                  kubernetesProviderConfigRef.name and for resource label
-                  defaults. The per-Tenant namespace is created on this cluster.
+                  kubernetesProviderConfigRef.name and label defaults. The
+                  per-Tenant namespace is created on this cluster.
                 type: string
 
               type:
@@ -56,7 +58,7 @@ spec:
                 default: "business"
 
               display:
-                description: Display metadata for the tenant.
+                description: Display metadata.
                 type: object
                 properties:
                   name:
@@ -83,40 +85,26 @@ spec:
                   zitadel:
                     type: object
                     properties:
-                      mode:
+                      orgName:
                         description: |
-                          create | adopt. v1 doesn't support "external".
-                          - create: compose a fresh Zitadel Org
-                          - adopt:  take over an existing Org via external-name
+                          Name of the Zitadel Org. Defaults to metadata.name
+                          when empty.
                         type: string
-                        enum: ["create", "adopt"]
-                        default: "create"
-                      create:
-                        description: "Settings for mode: create."
-                        type: object
-                        properties:
-                          orgName:
-                            description: |
-                              Name of the Zitadel Org. Defaults to
-                              metadata.name when empty.
-                            type: string
-                            default: ""
-                      adopt:
-                        description: "Settings for mode: adopt."
-                        type: object
-                        properties:
-                          orgId:
-                            description: |
-                              Existing Zitadel Org UUID. REQUIRED when
-                              mode: adopt — propagates as the underlying Org
-                              MR's crossplane.io/external-name annotation.
-                            type: string
+                        default: ""
+                      orgId:
+                        description: |
+                          Existing Zitadel Org UUID. When set, propagates as
+                          the composed Org MR's crossplane.io/external-name
+                          annotation (adoption pattern). Pair with
+                          spec.managementPolicies excluding "Create" to
+                          prevent Crossplane from trying to recreate.
+                        type: string
+                        default: ""
                       defaultProject:
                         description: |
                           Default Project composed inside the Tenant's Org.
-                          Set defaults.skip: true to skip the default Project
-                          composition (advanced — operator applies raw Project
-                          MRs instead).
+                          Set skip: true to opt out (advanced — operator
+                          applies raw Project MRs instead).
                         type: object
                         properties:
                           skip:
@@ -124,15 +112,13 @@ spec:
                             default: false
                           name:
                             description: |
-                              Name of the default Project. Defaults to
-                              "<metadata.name>-default" when empty.
+                              Defaults to "<metadata.name>-default".
                             type: string
                             default: ""
                           roles:
                             description: |
-                              Inline role list for the default Project. Each
-                              entry composes a Zitadel Role MR. Defaults to
-                              tenant-admin + tenant-member when omitted.
+                              Inline roles. Defaults to tenant-admin +
+                              tenant-member when empty.
                             type: array
                             items:
                               type: object
@@ -148,8 +134,54 @@ spec:
                               required:
                               - key
                             default: []
-                    required:
-                    - mode
+
+              analytics:
+                description: Analytics-slice configuration (OpenPanel).
+                type: object
+                properties:
+                  openpanel:
+                    type: object
+                    properties:
+                      enabled:
+                        description: |
+                          When true, composes an OpenPanel Organization MR
+                          + (unless defaultProject.skip) a default OpenPanel
+                          Project MR. Requires provider-openpanel installed
+                          with a ProviderConfig pointing at the target
+                          OpenPanel instance.
+                        type: boolean
+                        default: false
+                      orgName:
+                        description: |
+                          Name of the OpenPanel Org (shown in the OpenPanel
+                          dashboard). Defaults to display.name when empty.
+                        type: string
+                        default: ""
+                      orgId:
+                        description: |
+                          Existing OpenPanel Organization UUID. When set,
+                          propagates as the composed OpenPanel Org MR's
+                          crossplane.io/external-name. Pair with
+                          managementPolicies excluding "Create" to adopt.
+                          Per [[reference_openpanel_organization_upsert_semantics]],
+                          OpenPanel's TF provider Create is find-or-create;
+                          adoption via external-name is the safe path.
+                        type: string
+                        default: ""
+                      defaultProject:
+                        description: |
+                          Default OpenPanel Project composed inside the
+                          Tenant's OpenPanel Org.
+                        type: object
+                        properties:
+                          skip:
+                            type: boolean
+                            default: false
+                          name:
+                            description: |
+                              Defaults to "<metadata.name>-default".
+                            type: string
+                            default: ""
 
               capsule:
                 description: K8s isolation slice (Capsule).
@@ -158,16 +190,16 @@ spec:
                   enabled:
                     description: |
                       When true, composes a Capsule Tenant CR
-                      (capsule.clastix.io/v1beta2/Tenant) for namespace
-                      isolation. Requires capsule (from tenant-stack) to be
-                      installed on the target cluster.
+                      (capsule.clastix.io/v1beta2/Tenant). Requires
+                      Capsule (from tenant-stack) installed on the target
+                      cluster.
                     type: boolean
                     default: false
                   userGroups:
                     description: |
                       OIDC claim group values that promote a user to Capsule
                       tenant-owner. Typically maps to the Zitadel Project
-                      Role claim emitted in OIDC tokens for tenant-admin.
+                      Role claim for tenant-admin.
                     type: array
                     items:
                       type: string
@@ -175,9 +207,8 @@ spec:
 
               accounts:
                 description: |
-                  Per-cloud Foundation references. Echoed in status but NOT
-                  composed by Tenant — Foundation lifecycle is owned
-                  externally (e.g., aws-foundation XR).
+                  Per-cloud Foundation refs. Echoed in status but NOT
+                  composed — Foundation lifecycle is owned externally.
                 type: object
                 properties:
                   aws:
@@ -200,7 +231,6 @@ spec:
                 type: object
                 properties:
                   tag:
-                    description: Cost-allocation tag value.
                     type: string
                   budgets:
                     type: object
@@ -214,14 +244,10 @@ spec:
               providerConfigRefs:
                 description: |
                   ProviderConfig refs for the composed resources. Each defaults
-                  to a convention-derived name based on clusterName + provider.
+                  to a convention-derived name based on clusterName.
                 type: object
                 properties:
                   kubernetes:
-                    description: |
-                      ProviderConfig for provider-kubernetes (used for
-                      Namespace + Capsule Tenant CR composition).
-                      Defaults to clusterName.
                     type: object
                     properties:
                       name:
@@ -232,8 +258,18 @@ spec:
                   zitadel:
                     description: |
                       ProviderConfig for provider-upjet-zitadel. Defaults to
-                      "<clusterName>-zitadel" or — if explicitly set on
-                      tenant-stack — that PC name.
+                      "<clusterName>-zitadel".
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      kind:
+                        type: string
+                        default: "ProviderConfig"
+                  openpanel:
+                    description: |
+                      ProviderConfig for provider-openpanel. Defaults to
+                      "<clusterName>-openpanel".
                     type: object
                     properties:
                       name:
@@ -245,8 +281,8 @@ spec:
               managementPolicies:
                 description: |
                   Crossplane managementPolicies for all composed resources.
-                  Defaults to ["*"]. For adopt mode of pat-local existing
-                  state, set to ["Observe", "Update", "LateInitialize"].
+                  Defaults to ["*"]. For adoption flows, set to
+                  ["Observe", "Update", "LateInitialize"].
                 type: array
                 items:
                   type: string
@@ -264,16 +300,11 @@ spec:
             required:
             - clusterName
             - display
-            - identity
 
           status:
-            description: TenantStatus defines the observed state.
             type: object
             properties:
               namespace:
-                description: |
-                  Per-Tenant namespace this Tenant created (matches
-                  metadata.name).
                 type: string
               identity:
                 type: object
@@ -281,15 +312,7 @@ spec:
                   zitadel:
                     type: object
                     properties:
-                      mode:
-                        type: string
                       orgId:
-                        description: Underlying Zitadel Org UUID.
-                        type: string
-                      issuerURL:
-                        description: |
-                          Zitadel Instance issuer URL (echoed for downstream
-                          consumer convenience).
                         type: string
                       defaultProject:
                         type: object
@@ -297,25 +320,37 @@ spec:
                           name:
                             type: string
                           projectId:
-                            description: Underlying Zitadel Project UUID.
                             type: string
                           roles:
-                            description: |
-                              Map of role key → underlying Zitadel role ID
-                              (consumed by future Grant XRs).
                             type: object
                             additionalProperties:
                               type: object
                               properties:
                                 roleId:
                                   type: string
+              analytics:
+                type: object
+                properties:
+                  openpanel:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                      orgId:
+                        type: string
+                      defaultProject:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          projectId:
+                            type: string
               capsule:
                 type: object
                 properties:
                   enabled:
                     type: boolean
                   tenantName:
-                    description: Name of the composed Capsule Tenant CR.
                     type: string
               accounts:
                 type: object
@@ -324,7 +359,6 @@ spec:
                     type: object
                     properties:
                       foundationRef:
-                        description: Echoed from spec.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
               ready:

@@ -1,9 +1,7 @@
-# Standard Tenant — create mode, capsule enabled, AWS Foundation ref echoed.
-# Scaffolds:
-#   - Namespace "ops-com-ai"
-#   - Zitadel Org "ops-com-ai"
-#   - Default Zitadel Project "ops-com-ai-default" + tenant-admin/tenant-member Roles
-#   - Capsule Tenant CR "ops-com-ai"
+# Standard Tenant — fresh Org + default Project + default Roles +
+# OpenPanel Org + default OpenPanel Project + Capsule Tenant CR + AWS
+# Foundation ref echo. Scaffolds the full identity + analytics + isolation
+# slices in one apply.
 apiVersion: hops.ops.com.ai/v1alpha1
 kind: Tenant
 metadata:
@@ -16,8 +14,10 @@ spec:
     name: "ops.com.ai"
     primaryDomain: ops.com.ai
   identity:
-    zitadel:
-      mode: create
+    zitadel: {}
+  analytics:
+    openpanel:
+      enabled: true
   capsule:
     enabled: true
     userGroups: [tenant-admin]

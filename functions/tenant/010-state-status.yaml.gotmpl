@@ -6,36 +6,62 @@
 
 {{- $observed := $.observed.resources | default dict }}
 
-# Zitadel Org observed state
+# ==============================================================================
+# Zitadel Org
+# ==============================================================================
 {{- $orgEntry := get $observed "zitadel-org" | default dict }}
 {{- $orgResource := $orgEntry.resource | default dict }}
 {{- $orgAtProvider := (($orgResource.status | default dict).atProvider | default dict) }}
 {{- $orgId := $orgAtProvider.id | default "" }}
-
-# If adopt mode and no observed id yet, fall back to spec.adoptOrgId
-{{- if and (eq $state.zitadel.mode "adopt") (eq $orgId "") }}
-  {{- $orgId = $state.zitadel.adoptOrgId }}
+# Fallback to spec when adopting and observation hasn't landed yet
+{{- if and (eq $orgId "") (ne $state.zitadel.orgId "") }}
+  {{- $orgId = $state.zitadel.orgId }}
 {{- end }}
 
-# Zitadel Project observed state
+# Zitadel default Project
 {{- $projectEntry := get $observed "zitadel-default-project" | default dict }}
 {{- $projectResource := $projectEntry.resource | default dict }}
 {{- $projectAtProvider := (($projectResource.status | default dict).atProvider | default dict) }}
 {{- $projectId := $projectAtProvider.id | default "" }}
 
-# Per-role observed state — only when defaultProject is composed
-{{- $rolesStatus := dict }}
+# Zitadel default Roles
+{{- $zitadelRolesStatus := dict }}
 {{- if not $state.zitadel.defaultProjectSkip }}
   {{- range $i, $role := $state.zitadel.defaultRoles }}
     {{- $roleEntry := get $observed (printf "zitadel-default-role-%s" $role.key) | default dict }}
     {{- $roleResource := $roleEntry.resource | default dict }}
     {{- $roleAtProvider := (($roleResource.status | default dict).atProvider | default dict) }}
     {{- $roleId := $roleAtProvider.id | default "" }}
-    {{- $_ := set $rolesStatus $role.key (dict "roleId" $roleId) }}
+    {{- $_ := set $zitadelRolesStatus $role.key (dict "roleId" $roleId) }}
   {{- end }}
 {{- end }}
 
-# Namespace observed Ready signal
+# ==============================================================================
+# OpenPanel Org
+# ==============================================================================
+{{- $opOrgId := "" }}
+{{- $opProjectId := "" }}
+{{- if $state.openpanel.enabled }}
+  {{- $opOrgEntry := get $observed "openpanel-org" | default dict }}
+  {{- $opOrgResource := $opOrgEntry.resource | default dict }}
+  {{- $opOrgAtProvider := (($opOrgResource.status | default dict).atProvider | default dict) }}
+  {{- $opOrgId = $opOrgAtProvider.id | default "" }}
+  {{- if and (eq $opOrgId "") (ne $state.openpanel.orgId "") }}
+    {{- $opOrgId = $state.openpanel.orgId }}
+  {{- end }}
+
+  # OpenPanel default Project
+  {{- if not $state.openpanel.defaultProjectSkip }}
+    {{- $opProjectEntry := get $observed "openpanel-default-project" | default dict }}
+    {{- $opProjectResource := $opProjectEntry.resource | default dict }}
+    {{- $opProjectAtProvider := (($opProjectResource.status | default dict).atProvider | default dict) }}
+    {{- $opProjectId = $opProjectAtProvider.id | default "" }}
+  {{- end }}
+{{- end }}
+
+# ==============================================================================
+# Namespace + Capsule readiness
+# ==============================================================================
 {{- $nsEntry := get $observed "namespace" | default dict }}
 {{- $nsResource := $nsEntry.resource | default dict }}
 {{- $nsConditions := (($nsResource.status | default dict).conditions | default list) }}
@@ -46,9 +72,9 @@
   {{- end }}
 {{- end }}
 
-# Capsule Tenant observed Ready signal
-{{- $capsuleReady := false }}
+{{- $capsuleReady := true }}
 {{- if $state.capsule.enabled }}
+  {{- $capsuleReady = false }}
   {{- $capsuleEntry := get $observed "capsule-tenant" | default dict }}
   {{- $capsuleResource := $capsuleEntry.resource | default dict }}
   {{- $capsuleConditions := (($capsuleResource.status | default dict).conditions | default list) }}
@@ -57,24 +83,34 @@
       {{- $capsuleReady = true }}
     {{- end }}
   {{- end }}
-{{- else }}
-  {{- $capsuleReady = true }}
 {{- end }}
 
-# Tenant Ready when all required slices are Ready
+# ==============================================================================
+# Aggregate Tenant readiness
+# ==============================================================================
 {{- $tenantReady := and $namespaceReady (ne $orgId "") $capsuleReady }}
 {{- if not $state.zitadel.defaultProjectSkip }}
   {{- $tenantReady = and $tenantReady (ne $projectId "") }}
+{{- end }}
+{{- if $state.openpanel.enabled }}
+  {{- $tenantReady = and $tenantReady (ne $opOrgId "") }}
+  {{- if not $state.openpanel.defaultProjectSkip }}
+    {{- $tenantReady = and $tenantReady (ne $opProjectId "") }}
+  {{- end }}
 {{- end }}
 
 # Mutate $state
 {{- $_ := set $state.observed "orgId" $orgId }}
 {{- $_ := set $state.observed "projectId" $projectId }}
-{{- $_ := set $state.observed "rolesStatus" $rolesStatus }}
+{{- $_ := set $state.observed "zitadelRolesStatus" $zitadelRolesStatus }}
+{{- $_ := set $state.observed "opOrgId" $opOrgId }}
+{{- $_ := set $state.observed "opProjectId" $opProjectId }}
 {{- $_ := set $state.observed "namespaceReady" $namespaceReady }}
 {{- $_ := set $state.observed "capsuleReady" $capsuleReady }}
 {{- $_ := set $state.status "ready" $tenantReady }}
 {{- $_ := set $state.status "namespace" $state.perTenantNamespace }}
 {{- $_ := set $state.status "orgId" $orgId }}
 {{- $_ := set $state.status "projectId" $projectId }}
-{{- $_ := set $state.status "rolesStatus" $rolesStatus }}
+{{- $_ := set $state.status "zitadelRolesStatus" $zitadelRolesStatus }}
+{{- $_ := set $state.status "opOrgId" $opOrgId }}
+{{- $_ := set $state.status "opProjectId" $opProjectId }}

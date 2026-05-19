@@ -1,0 +1,31 @@
+# code: language=yaml
+#
+# OpenPanel Organization (organizations.organization.openpanel.m.crossplane.io).
+#
+# Adoption: spec.analytics.openpanel.orgId propagates as the
+# crossplane.io/external-name annotation. Per
+# [[reference_openpanel_organization_upsert_semantics]], adopting via
+# external-name is REQUIRED — without it, the TF provider's Create is
+# find-or-create and may rename + cascade-delete an existing Org.
+#
+
+{{- if $state.openpanel.enabled }}
+---
+apiVersion: organization.openpanel.m.crossplane.io/v1alpha1
+kind: Organization
+metadata:
+  name: {{ $state.name }}-openpanel-org
+  annotations:
+    {{ setResourceNameAnnotation "openpanel-org" }}
+    {{- if ne $state.openpanel.orgId "" }}
+    crossplane.io/external-name: {{ $state.openpanel.orgId | quote }}
+    {{- end }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  forProvider:
+    name: {{ $state.openpanel.orgName | quote }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.openpanel.name | quote }}
+    kind: {{ $state.providerConfigRefs.openpanel.kind | quote }}
+{{- end }}

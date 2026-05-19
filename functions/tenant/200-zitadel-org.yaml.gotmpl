@@ -2,11 +2,11 @@
 #
 # Zitadel Org (org.zitadel.m.crossplane.io/Org).
 #
-# create mode: fresh Org, server-assigned id.
-# adopt  mode: crossplane.io/external-name set to spec.adoptOrgId.
+# Adoption: spec.identity.zitadel.orgId propagates as the
+# crossplane.io/external-name annotation. To prevent Crossplane from
+# trying to recreate an adopted Org, the operator also sets
+# spec.managementPolicies to ["Observe", "Update", "LateInitialize"].
 #
-
-{{- $zitadel := $state.zitadel }}
 
 ---
 apiVersion: org.zitadel.m.crossplane.io/v1alpha1
@@ -15,13 +15,13 @@ metadata:
   name: {{ $state.name }}-org
   annotations:
     {{ setResourceNameAnnotation "zitadel-org" }}
-    {{- if eq $zitadel.mode "adopt" }}
-    crossplane.io/external-name: {{ $zitadel.adoptOrgId | quote }}
+    {{- if ne $state.zitadel.orgId "" }}
+    crossplane.io/external-name: {{ $state.zitadel.orgId | quote }}
     {{- end }}
   labels: {{ $state.labels | toJson }}
 spec:
   forProvider:
-    name: {{ $zitadel.orgName | quote }}
+    name: {{ $state.zitadel.orgName | quote }}
   managementPolicies: {{ $state.managementPolicies | toJson }}
   providerConfigRef:
     name: {{ $state.providerConfigRefs.zitadel.name | quote }}

@@ -1,0 +1,28 @@
+# code: language=yaml
+#
+# Default OpenPanel Project (projects.project.openpanel.m.crossplane.io).
+#
+# Composition gating per [[feedback_crossplane_composition_gates]]:
+# defer emission until the OpenPanel Org is observed (opOrgId populated).
+# OpenPanel Project's organizationId is a plain string — no
+# organizationIdRef cross-resource pattern on this provider's MR.
+#
+
+{{- if and $state.openpanel.enabled (not $state.openpanel.defaultProjectSkip) (ne $state.observed.opOrgId "") }}
+---
+apiVersion: project.openpanel.m.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: {{ $state.name }}-openpanel-default-project
+  annotations:
+    {{ setResourceNameAnnotation "openpanel-default-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  forProvider:
+    name: {{ $state.openpanel.defaultProjectName | quote }}
+    organizationId: {{ $state.observed.opOrgId | quote }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRefs.openpanel.name | quote }}
+    kind: {{ $state.providerConfigRefs.openpanel.kind | quote }}
+{{- end }}

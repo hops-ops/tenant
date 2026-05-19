@@ -4,9 +4,7 @@
 #
 
 {{- $xr := getCompositeResource . }}
-
-# Compose roles map (key → { roleId })
-{{- $rolesStatusYaml := $state.observed.rolesStatus | default dict }}
+{{- $zitadelRolesStatusYaml := $state.observed.zitadelRolesStatus | default dict }}
 
 ---
 apiVersion: {{ $xr.apiVersion }}
@@ -16,14 +14,24 @@ status:
   namespace: {{ $state.status.namespace | quote }}
   identity:
     zitadel:
-      mode: {{ $state.zitadel.mode | quote }}
       orgId: {{ $state.status.orgId | default "" | quote }}
       {{- if not $state.zitadel.defaultProjectSkip }}
       defaultProject:
         name: {{ $state.zitadel.defaultProjectName | quote }}
         projectId: {{ $state.status.projectId | default "" | quote }}
-        roles: {{ $rolesStatusYaml | toJson }}
+        roles: {{ $zitadelRolesStatusYaml | toJson }}
       {{- end }}
+  {{- if $state.openpanel.enabled }}
+  analytics:
+    openpanel:
+      enabled: true
+      orgId: {{ $state.status.opOrgId | default "" | quote }}
+      {{- if not $state.openpanel.defaultProjectSkip }}
+      defaultProject:
+        name: {{ $state.openpanel.defaultProjectName | quote }}
+        projectId: {{ $state.status.opProjectId | default "" | quote }}
+      {{- end }}
+  {{- end }}
   capsule:
     enabled: {{ $state.capsule.enabled }}
     {{- if $state.capsule.enabled }}
