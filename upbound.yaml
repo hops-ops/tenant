@@ -19,7 +19,7 @@ spec:
   - apiVersion: pkg.crossplane.io/v1
     kind: Provider
     package: ghcr.io/hops-ops/provider-openpanel
-    version: '>=v1.0.1'
+    version: '>=v1.1.0'
   description: |
     Tenant — platform business-object XRD. Composes a per-Tenant Namespace
     plus the Zitadel identity scaffolding (Org + default Project + default
