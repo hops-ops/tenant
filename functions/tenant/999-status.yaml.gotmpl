@@ -18,10 +18,12 @@ status:
     zitadel:
       mode: {{ $state.zitadel.mode | quote }}
       orgId: {{ $state.status.orgId | default "" | quote }}
+      {{- if not $state.zitadel.defaultProjectSkip }}
       defaultProject:
         name: {{ $state.zitadel.defaultProjectName | quote }}
         projectId: {{ $state.status.projectId | default "" | quote }}
         roles: {{ $rolesStatusYaml | toJson }}
+      {{- end }}
   capsule:
     enabled: {{ $state.capsule.enabled }}
     {{- if $state.capsule.enabled }}

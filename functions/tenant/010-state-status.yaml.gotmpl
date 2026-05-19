@@ -23,14 +23,16 @@
 {{- $projectAtProvider := (($projectResource.status | default dict).atProvider | default dict) }}
 {{- $projectId := $projectAtProvider.id | default "" }}
 
-# Per-role observed state
+# Per-role observed state — only when defaultProject is composed
 {{- $rolesStatus := dict }}
-{{- range $i, $role := $state.zitadel.defaultRoles }}
-  {{- $roleEntry := get $observed (printf "zitadel-default-role-%s" $role.key) | default dict }}
-  {{- $roleResource := $roleEntry.resource | default dict }}
-  {{- $roleAtProvider := (($roleResource.status | default dict).atProvider | default dict) }}
-  {{- $roleId := $roleAtProvider.id | default "" }}
-  {{- $_ := set $rolesStatus $role.key (dict "roleId" $roleId) }}
+{{- if not $state.zitadel.defaultProjectSkip }}
+  {{- range $i, $role := $state.zitadel.defaultRoles }}
+    {{- $roleEntry := get $observed (printf "zitadel-default-role-%s" $role.key) | default dict }}
+    {{- $roleResource := $roleEntry.resource | default dict }}
+    {{- $roleAtProvider := (($roleResource.status | default dict).atProvider | default dict) }}
+    {{- $roleId := $roleAtProvider.id | default "" }}
+    {{- $_ := set $rolesStatus $role.key (dict "roleId" $roleId) }}
+  {{- end }}
 {{- end }}
 
 # Namespace observed Ready signal
